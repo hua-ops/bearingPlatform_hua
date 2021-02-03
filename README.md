@@ -60,6 +60,6 @@ training_model.py 模型训练的相关函数
 
 ## 5.效果图
 
-<img src="C:\Users\Hasee\Desktop\1.jpg" alt="1" style="zoom: 67%;" />
+<img src="https://github.com/hua-ops/bearingPlatform_hua/blob/master/UI/images/diagnosis_page.jpg alt="1" style="zoom: 67%;" />
 
-<img src="C:\Users\Hasee\Desktop\2.jpg" alt="2" style="zoom: 67%;" />
+<img src="https://github.com/hua-ops/bearingPlatform_hua/blob/master/UI/images/train_model_page.jpg" alt="2" style="zoom: 67%;" />
