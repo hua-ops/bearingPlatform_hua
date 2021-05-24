@@ -63,3 +63,6 @@ training_model.py 模型训练的相关函数
 <img src="https://github.com/hua-ops/bearingPlatform_hua/blob/master/UI/images/diagnosis_page.jpg" alt="故障诊断页面" style="zoom: 67%;" />
 
 <img src="https://github.com/hua-ops/bearingPlatform_hua/blob/master/UI/images/train_model_page.jpg" alt="训练模型页面" style="zoom: 67%;" />
+
+## 6.改进
+这里的显示图片是将其先存到本地，然后再读取显示。后期在新项目中将其改进为使用 GraphicsView控件 嵌入Matplotlib的绘图，但因为这个新项目的诊断算法不太方便透露，所以大家可以参考我的这篇[Pyside2中嵌入Matplotlib的绘图](https://blog.csdn.net/qq_28053421/article/details/113828372?spm=1001.2014.3001.5501)，或者直接与我讨论交流！！！
