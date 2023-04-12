@@ -16,7 +16,7 @@
 * keras 2.24
 * tensorflow-gpu 1.12
 * pyside2 5.15.2
-* skiit-learn 0.23
+* scikit-learn 0.23
 * numpy
 * pandas
 * matplotlib
