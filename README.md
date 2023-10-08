@@ -13,28 +13,30 @@
 * anaconda
 * Pycharm
 ## 3.框架与依赖
-* keras 2.24
-* tensorflow-gpu 1.12
-* pyside2 5.15.2
-* scikit-learn 0.23
-* numpy
-* pandas
-* matplotlib
+* keras==2.24
+* tensorflow-gpu==1.12
+* pyside2==5.15.2
+* scikit-learn==0.23
+* numpy≈1.16.4
+* pandas≈0.25.0
+* matplotlib≈3.1.0
 ## 4.详细说明
 ## 4.1 文件说明
-UI 存放的软件平台页面布局文件
+UI: 存放的软件平台页面布局文件
 
-data_preprocess.py 数据预处理
+data_preprocess.py: 数据预处理
 
-diagnosis.py 故障诊断相关函数
+diagnosis.py: 故障诊断相关函数
 
-feature_extraction.py 特征提取函数
+feature_extraction.py: 特征提取函数
 
-main.py 主程序
+figure_canvas.py: GraphicsView控件中利用matplotlib绘图的相关函数
 
-message_signal.py 自定义信号
+main.py: 主程序
 
-preprocess_train_result.py 处理模性训练结果的相关函数
+message_signal.py: 自定义信号
+
+preprocess_train_result.py: 处理模性训练结果的相关函数
 
 training_model.py 模型训练的相关函数
 ### 4.1 故障分类算法
@@ -61,9 +63,10 @@ training_model.py 模型训练的相关函数
 
 ## 5.效果图
 
-<img src="https://github.com/hua-ops/bearingPlatform_hua/blob/master/UI/images/diagnosis_page.jpg" alt="故障诊断页面" style="zoom: 67%;" />
+<img src="img/diagnosis_page.jpg" alt="故障诊断页面" style="zoom: 67%;" />
 
-<img src="https://github.com/hua-ops/bearingPlatform_hua/blob/master/UI/images/train_model_page.jpg" alt="训练模型页面" style="zoom: 67%;" />
+<img src="img/train_model_page.jpg" alt="训练模型页面" style="zoom: 67%;" />
 
-## 6.改进
-这里的显示图片是将其先存到本地，然后再读取显示。后期在新项目中将其改进为使用 GraphicsView控件 嵌入Matplotlib的绘图，但因为这个新项目的诊断算法不太方便透露，所以大家可以参考我的这篇[Pyside2中嵌入Matplotlib的绘图](https://blog.csdn.net/qq_28053421/article/details/113828372?spm=1001.2014.3001.5501)，或者直接与我讨论交流！！！
+## 6.说明
+对于数据可视化的图片显示，参照[Pyside2中嵌入Matplotlib的绘图](https://blog.csdn.net/qq_28053421/article/details/113828372?spm=1001.2014.3001.5501)，使用了  GraphicsView控件嵌入Matplotlib的绘图，
+而在训练结果展示的图片显示中，由于绘图使用了sklearn中封装的函数，所以目前是将其先存到本地，然后再读取显示。

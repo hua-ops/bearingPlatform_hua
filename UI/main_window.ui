@@ -40,7 +40,7 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout" stretch="1,1">
+         <layout class="QVBoxLayout" name="verticalLayout" stretch="3,4">
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,13">
             <item>
@@ -54,16 +54,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="l_visual_diagnosis_data">
-              <property name="styleSheet">
-               <string notr="true">background-color: rgb(255, 255, 255);
-border-style:solid;
-border-width:1px;</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
+             <widget class="QGraphicsView" name="gv_visual_diagnosis_data"/>
             </item>
            </layout>
           </item>
@@ -96,14 +87,19 @@ border-width:1px;</string>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1">
               <item>
-               <widget class="QTextBrowser" name="tb_diagnosis_result"/>
+               <widget class="QTextBrowser" name="tb_diagnosis_result">
+                <property name="styleSheet">
+                 <string notr="true">border-style:solid;
+border-width:1px;</string>
+                </property>
+               </widget>
               </item>
               <item>
                <widget class="QLabel" name="l_diagnosis_result">
                 <property name="styleSheet">
                  <string notr="true">background-color: rgb(255, 255, 255);
-border-style: solid;
-border-width: 1px;</string>
+border-style:solid;
+border-width:1px;</string>
                 </property>
                 <property name="text">
                  <string/>
@@ -329,30 +325,26 @@ border-width: 1px;</string>
            </layout>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_6" stretch="1,1">
+           <layout class="QVBoxLayout" name="verticalLayout_6" stretch="3,4">
             <item>
-             <widget class="QLabel" name="l_visual_data">
-              <property name="styleSheet">
-               <string notr="true">background-color: rgb(255, 255, 255);
-border-style:solid;
-border-width:1px;</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
+             <widget class="QGraphicsView" name="gv_visual_data"/>
             </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,1">
               <item>
-               <widget class="QTextBrowser" name="tb_train_result"/>
+               <widget class="QTextBrowser" name="tb_train_result">
+                <property name="styleSheet">
+                 <string notr="true">border-style:solid;
+border-width:1px;</string>
+                </property>
+               </widget>
               </item>
               <item>
                <widget class="QLabel" name="l_train_result">
                 <property name="styleSheet">
                  <string notr="true">background-color: rgb(255, 255, 255);
-border-style: solid;
-border-width: 1px;</string>
+border-style:solid;
+border-width:1px;</string>
                 </property>
                 <property name="text">
                  <string/>

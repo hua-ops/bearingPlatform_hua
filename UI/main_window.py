@@ -44,13 +44,10 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addWidget(self.pb_select_model)
 
-        self.l_visual_diagnosis_data = QLabel(self.tw_real_time_diagnosis)
-        self.l_visual_diagnosis_data.setObjectName(u"l_visual_diagnosis_data")
-        self.l_visual_diagnosis_data.setStyleSheet(u"background-color: rgb(255, 255, 255);\n"
-"border-style:solid;\n"
-"border-width:1px;")
+        self.gv_visual_diagnosis_data = QGraphicsView(self.tw_real_time_diagnosis)
+        self.gv_visual_diagnosis_data.setObjectName(u"gv_visual_diagnosis_data")
 
-        self.horizontalLayout.addWidget(self.l_visual_diagnosis_data)
+        self.horizontalLayout.addWidget(self.gv_visual_diagnosis_data)
 
         self.horizontalLayout.setStretch(0, 1)
         self.horizontalLayout.setStretch(1, 13)
@@ -78,14 +75,16 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.tb_diagnosis_result = QTextBrowser(self.tw_real_time_diagnosis)
         self.tb_diagnosis_result.setObjectName(u"tb_diagnosis_result")
+        self.tb_diagnosis_result.setStyleSheet(u"border-style:solid;\n"
+"border-width:1px;")
 
         self.horizontalLayout_2.addWidget(self.tb_diagnosis_result)
 
         self.l_diagnosis_result = QLabel(self.tw_real_time_diagnosis)
         self.l_diagnosis_result.setObjectName(u"l_diagnosis_result")
         self.l_diagnosis_result.setStyleSheet(u"background-color: rgb(255, 255, 255);\n"
-"border-style: solid;\n"
-"border-width: 1px;")
+"border-style:solid;\n"
+"border-width:1px;")
 
         self.horizontalLayout_2.addWidget(self.l_diagnosis_result)
 
@@ -97,8 +96,8 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addLayout(self.horizontalLayout_6)
 
-        self.verticalLayout.setStretch(0, 1)
-        self.verticalLayout.setStretch(1, 1)
+        self.verticalLayout.setStretch(0, 3)
+        self.verticalLayout.setStretch(1, 4)
 
         self.horizontalLayout_3.addLayout(self.verticalLayout)
 
@@ -225,26 +224,25 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_6 = QVBoxLayout()
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
-        self.l_visual_data = QLabel(self.tw_train_model)
-        self.l_visual_data.setObjectName(u"l_visual_data")
-        self.l_visual_data.setStyleSheet(u"background-color: rgb(255, 255, 255);\n"
-"border-style:solid;\n"
-"border-width:1px;")
+        self.gv_visual_data = QGraphicsView(self.tw_train_model)
+        self.gv_visual_data.setObjectName(u"gv_visual_data")
 
-        self.verticalLayout_6.addWidget(self.l_visual_data)
+        self.verticalLayout_6.addWidget(self.gv_visual_data)
 
         self.horizontalLayout_4 = QHBoxLayout()
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
         self.tb_train_result = QTextBrowser(self.tw_train_model)
         self.tb_train_result.setObjectName(u"tb_train_result")
+        self.tb_train_result.setStyleSheet(u"border-style:solid;\n"
+"border-width:1px;")
 
         self.horizontalLayout_4.addWidget(self.tb_train_result)
 
         self.l_train_result = QLabel(self.tw_train_model)
         self.l_train_result.setObjectName(u"l_train_result")
         self.l_train_result.setStyleSheet(u"background-color: rgb(255, 255, 255);\n"
-"border-style: solid;\n"
-"border-width: 1px;")
+"border-style:solid;\n"
+"border-width:1px;")
 
         self.horizontalLayout_4.addWidget(self.l_train_result)
 
@@ -253,8 +251,8 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_6.addLayout(self.horizontalLayout_4)
 
-        self.verticalLayout_6.setStretch(0, 1)
-        self.verticalLayout_6.setStretch(1, 1)
+        self.verticalLayout_6.setStretch(0, 3)
+        self.verticalLayout_6.setStretch(1, 4)
 
         self.horizontalLayout_5.addLayout(self.verticalLayout_6)
 
@@ -288,7 +286,6 @@ class Ui_MainWindow(object):
         self.pb_select_model.setToolTip(QCoreApplication.translate("MainWindow", u"\u8bf7\u9009\u62e9 .m \u6216 .h5 \u683c\u5f0f\u7684\u6587\u4ef6", None))
 #endif // QT_CONFIG(tooltip)
         self.pb_select_model.setText(QCoreApplication.translate("MainWindow", u"\u9009\u62e9\u6a21\u578b", None))
-        self.l_visual_diagnosis_data.setText("")
 #if QT_CONFIG(tooltip)
         self.pb_local_diagnosis.setToolTip(QCoreApplication.translate("MainWindow", u"\u9009\u62e9\u672c\u5730\u7684\u6570\u636e\u8fdb\u884c\u8bca\u65ad", None))
 #endif // QT_CONFIG(tooltip)
@@ -320,7 +317,6 @@ class Ui_MainWindow(object):
         self.rb_acc_curcv.setText(QCoreApplication.translate("MainWindow", u"\u6b63\u786e\u7387\u66f2\u7ebf", None))
         self.pb_show_result.setText(QCoreApplication.translate("MainWindow", u"\u786e\u5b9a", None))
         self.pb_save_model.setText(QCoreApplication.translate("MainWindow", u"\u4fdd\u5b58\u6a21\u578b", None))
-        self.l_visual_data.setText("")
         self.l_train_result.setText("")
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tw_train_model), QCoreApplication.translate("MainWindow", u"\u6a21\u6027\u8bad\u7ec3", None))
     # retranslateUi

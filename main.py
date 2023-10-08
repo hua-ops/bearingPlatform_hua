@@ -9,6 +9,10 @@ Created on 2021/2/1 20:43
 
 @Desc  : None
 """
+from PySide2.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog
+from PySide2.QtGui import QPixmap, QImage
+from PySide2.QtCore import Qt
+from UI.main_window import Ui_MainWindow
 
 import sys
 import os
@@ -16,13 +20,9 @@ from scipy.io import loadmat
 from tensorflow import test
 import joblib  # 这个库在安装sklearn时好像会一起安装
 import threading
+import numpy as np
 
-import matplotlib.pyplot as plt
-from PySide2.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog
-from PySide2.QtGui import QPixmap, QImage
-from PySide2.QtCore import Qt
-from UI.main_window import Ui_MainWindow
-
+from figure_canvas import MyFigureCanvas
 from data_preprocess import training_stage_prepro, diagnosis_stage_prepro
 from training_model import training_with_1D_CNN, training_with_LSTM, training_with_GRU, training_with_random_forest
 from preprocess_train_result import plot_history_curcvs, plot_confusion_matrix, brief_classification_report, plot_metrics
@@ -52,11 +52,21 @@ class MainWindow(QMainWindow):
         self.classification_report = ''  # 初始化一个 分类报告
         self.score = ''  # 初始化一个模型得分
 
+        if not os.path.exists(self.cache_path):
+            os.mkdir(self.cache_path)
 
     def init_UI(self):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        self.gv_visual_data_canvas = MyFigureCanvas(self.ui.gv_visual_data,
+                                                    width=self.ui.gv_visual_data.width() / 10,
+                                                    height=self.ui.gv_visual_data.height() / 13)
+        self.gv_visual_diagnosis_data_canvas = MyFigureCanvas(self.ui.gv_visual_diagnosis_data,
+                                                              width=self.ui.gv_visual_diagnosis_data.width() / 10,
+                                                              height=self.ui.gv_visual_diagnosis_data.height() / 13)
+
+        # 按钮的信号与槽连接
         self.ui.pb_select_file.clicked.connect(self.select_file)  # 模型训练页面的 选择文件 按钮
         self.ui.pb_visual_data.clicked.connect(self.visual_data)
         self.ui.pb_start_training.clicked.connect(self.start_training)
@@ -87,14 +97,10 @@ class MainWindow(QMainWindow):
                 self.ui.pb_visual_data.setEnabled(True)
                 return  # 直接退出
 
-        visual_data_pic_path = visual_data(self.data_file_path, self.cache_path)
-        # 读取图片文件，进行显示
-        img = QImage(visual_data_pic_path)
-        img_result = img.scaled(self.ui.l_visual_data.width(), self.ui.l_visual_data.height(),  # 裁剪图片将图片大小
-                                Qt.IgnoreAspectRatio,  # 保持长宽比例
-                                Qt.SmoothTransformation  # 平滑处理，使图片不失真
-                                )
-        self.ui.l_visual_data.setPixmap(QPixmap.fromImage(img_result))
+        data = read_mat(self.data_file_path)
+        title = os.path.split(self.data_file_path)[-1]
+        self.gv_visual_data_canvas.plot(np.arange(len(data)), data[:, 0], title=title)
+
         self.ui.pb_visual_data.setEnabled(True)
 
     def start_training(self):
@@ -111,8 +117,9 @@ class MainWindow(QMainWindow):
         # 到这里，就是 没有模型在训练，且选择了文件
         # 提示用户确认
         select_model = self.ui.comb_select_model.currentText()  # 用户选择的 模型
-        reply = QMessageBox.information(self, '提示', '确定使用“' + select_model + '”进行训练。\n请确保所有数据在一个文件夹下！',
-                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        message = '确定使用“' + select_model + '”进行训练。\n注意：\n1.请确保所有数据在一个文件夹下！\n' \
+                                           '2.请确保文件夹下有且只有用于训练的数据文件（.mat）'
+        reply = QMessageBox.information(self, '提示', message, QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
         if reply == QMessageBox.No:
             return  # 退出函数
 
@@ -233,7 +240,7 @@ class MainWindow(QMainWindow):
 
         show_mode = self.ui.buttonGroup.checkedId()
         # print(show_mode)
-        # TODO: 这里的 Id 自己测出来的, 应该还有别的方法直接得到所选框的内容
+        # !!!===== 这里的 Id 自己测出来的, 应该还有别的方法直接得到所选框的内容 ======!!!
         if -2 == show_mode:  # 展示 分类报告
             self.ui.l_train_result.setText(self.classification_report)
         elif -3 == show_mode:  # 展示 混淆矩阵
@@ -322,13 +329,9 @@ class MainWindow(QMainWindow):
         # TODO: 这里通过读取指定的文件夹数据来模拟实时采集数据
         real_time_data_path = os.getcwd() + '/real_time_data/0HP/48k_Drive_End_B007_0_122.mat'
 
-        # 读取完数据后，自动可视化数据
-        visual_data_pic_path = visual_data(real_time_data_path, self.cache_path)
-        # 读取图片文件，进行显示
-        img = QImage(visual_data_pic_path)
-        img_result = img.scaled(self.ui.l_visual_diagnosis_data.width(), self.ui.l_visual_diagnosis_data.height(),  # 裁剪图片将图片大小
-                                Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-        self.ui.l_visual_diagnosis_data.setPixmap(QPixmap.fromImage(img_result))
+        data = read_mat(real_time_data_path)
+        self.gv_visual_diagnosis_data_canvas.plot(np.arange(len(data)), data[:, 0])
+
         text = self.ui.tb_diagnosis_result.toPlainText()
         self.ui.tb_diagnosis_result.setText(text + '\n实时诊断：正在诊断..\n--------------')
 
@@ -360,13 +363,9 @@ class MainWindow(QMainWindow):
         text = self.ui.tb_diagnosis_result.toPlainText()
         self.ui.tb_diagnosis_result.setText(text + '\n本地诊断：正在读取数据...\n--------------')
 
-        # 读取完数据后，自动可视化数据
-        visual_data_pic_path = visual_data(file_path, self.cache_path)
-        # 读取图片文件，进行显示
-        img = QImage(visual_data_pic_path)
-        img_result = img.scaled(self.ui.l_visual_diagnosis_data.width(), self.ui.l_visual_diagnosis_data.height(),  # 裁剪图片将图片大小
-                                Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-        self.ui.l_visual_diagnosis_data.setPixmap(QPixmap.fromImage(img_result))
+        data = read_mat(file_path)
+        title = os.path.split(file_path)[-1]
+        self.gv_visual_diagnosis_data_canvas.plot(np.arange(len(data)), data[:, 0], title=title)
 
         text = self.ui.tb_diagnosis_result.toPlainText()
         self.ui.tb_diagnosis_result.setText(text + '\n实时诊断：正在诊断..\n--------------')
@@ -390,13 +389,12 @@ class MainWindow(QMainWindow):
         sys.exit()
 
 
-def visual_data(data_path, cache_path):
-    '''
+def read_mat(data_path):
+    """
     可视化数据
     :param data_path: 数据路径
-    :param cache_path: 可视化的图缓存的路径
     :return:
-    '''
+    """
     file = loadmat(data_path)  # 加载文件，这里得到的文件是一个 字典
     file_keys = file.keys()
     for key in file_keys:
@@ -404,29 +402,11 @@ def visual_data(data_path, cache_path):
             global data  # 定义一个全局变量
             data = file[key][:2500]  # 截取数据的前2500个数据点进行绘图
 
-    # 解决无法显示中文问题
-    plt.rcParams['font.sans-serif'] = ['SimHei']
-    plt.rcParams['axes.unicode_minus'] = False
-    plt.figure(figsize=(15, 7))
-    plt.plot(data)
-    # plt.title('驱动端测得的振动数据')
-
-    # TODO: 这里预想的是，直接在内存中画图，直接显示到页面上，但暂时不会。所以采用 先将图片保存到本地，再读取文件显示
-    # 获取图片的保存路径 --- 先获得文件名，在与路径拼接
-    visual_data_pic_name = data_path.split('/')[-1].split('.')[0]  # 先按 / 切割，获得最后的文件名，然后按 . 切割，去掉后缀名
-    visual_data_pic_path = cache_path + '/' + visual_data_pic_name + '.png'
-    # 保存图片
-    plt.savefig(visual_data_pic_path,
-                dpi=150, bbox_inches='tight'  # 去除输出图片四周的空白，使图片更加紧凑
-                )
-    # plt.show()  # 要先保存图片，再show。先show的话，plt在show完就没了，保存的就是一张空白
-    plt.close()  # 保存完图片后，要将plt关掉，不然，后面画图可能都会画在一张画布上
-
-    return visual_data_pic_path
+    return data
 
 
 def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
-    '''
+    """
     训练 1D_CNN 模型
     :param data_path: 数据路径
     :param signal_length: 信号长度
@@ -436,7 +416,7 @@ def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
     :return:
-    '''
+    """
     X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
                                                                                normal, rate, enhance=False)
     model, history, score = training_with_1D_CNN(X_train, y_train, X_valid, y_valid, X_test, y_test, batch_size=128,
@@ -454,7 +434,7 @@ def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_
 
 
 def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
-    '''
+    """
     训练 LSTM 模型
     :param data_path: 数据路径
     :param signal_length: 信号长度
@@ -464,7 +444,7 @@ def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_pa
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
     :return:
-    '''
+    """
     X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
                                                                                normal, rate, enhance=False)
     model, history, score = training_with_LSTM(X_train, y_train, X_valid, y_valid, X_test, y_test, batch_size=128,
@@ -482,7 +462,7 @@ def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_pa
 
 
 def GRU_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
-    '''
+    """
     训练 GRU 模型
     :param data_path: 数据路径
     :param signal_length: 信号长度
@@ -492,7 +472,7 @@ def GRU_training(data_path, signal_length, signal_number, normal, rate, save_pat
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
     :return:
-    '''
+    """
     X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
                                                                                normal, rate, enhance=False)
     model, history, score = training_with_GRU(X_train, y_train, X_valid, y_valid, X_test, y_test, batch_size=128,
@@ -510,7 +490,7 @@ def GRU_training(data_path, signal_length, signal_number, normal, rate, save_pat
 
 
 def random_forest_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
-    '''
+    """
     训练 随机森林 模型
     :param data_path: 数据路径
     :param signal_length: 信号长度
@@ -520,7 +500,7 @@ def random_forest_training(data_path, signal_length, signal_number, normal, rate
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
     :return:
-    '''
+    """
     X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
                                                                                normal, rate, enhance=False)
     model, score, X_train_feature_extraction, X_test_feature_extraction = training_with_random_forest(X_train, y_train,
@@ -539,12 +519,12 @@ def random_forest_training(data_path, signal_length, signal_number, normal, rate
 
 
 def fault_diagnosis(model_file_path, real_time_data_path):
-    '''
+    """
     使用模型进行故障诊断
     :param model_file_path: 模型路径
     :param real_time_data_path: 数据路径
     :return:
-    '''
+    """
     suffix = model_file_path.split('/')[-1].split('.')[-1]  # 获得所选模型的后缀名
     if 'm' == suffix:  # 说明是随机森林
         diagnosis_samples = diagnosis_stage_prepro(real_time_data_path, 500, 500, False)
