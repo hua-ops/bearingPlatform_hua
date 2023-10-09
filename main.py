@@ -33,17 +33,16 @@ from utils import generate_md5
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # 定义一些全局变量
-global training_end_signal  # 定义一个信号，用于当模型训练完成之后通知主线程进行弹窗提示
-training_end_signal = MyMessageSignal()
-
-global diagnosis_end_signal  # 诊断结束信号
-diagnosis_end_signal = MyMessageSignal()
+# global training_end_signal  # 定义一个信号，用于当模型训练完成之后通知主线程进行弹窗提示
+# training_end_signal = MyMessageSignal()
+#
+# global diagnosis_end_signal  # 诊断结束信号
+# diagnosis_end_signal = MyMessageSignal()
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.init_UI()
         # 定义并初始化一些成员变量
         self.data_file_path = ''  # 初始化一个 数据所在的 文件路径
         self.model_file_path = ''  # 初始化一个 模型所在的 文件路径
@@ -53,6 +52,12 @@ class MainWindow(QMainWindow):
         self.model = ''  # 训练得到的模型
         self.classification_report = ''  # 初始化一个 分类报告
         self.score = ''  # 初始化一个模型得分
+        self.scaler_info = {}
+
+        self.training_end_signal = MyMessageSignal()  # 训练结束信号
+        self.diagnosis_end_signal = MyMessageSignal()  # # 诊断结束信号
+
+        self.init_UI()
 
         if not os.path.exists(self.cache_path):
             os.mkdir(self.cache_path)
@@ -77,6 +82,9 @@ class MainWindow(QMainWindow):
         self.ui.pb_select_model.clicked.connect(self.select_model)
         self.ui.pb_real_time_diagnosis.clicked.connect(self.real_time_diagnosis)
         self.ui.pb_local_diagnosis.clicked.connect(self.local_diagnosis)
+
+        self.training_end_signal.send_msg.connect(self.training_end_slot)
+        self.diagnosis_end_signal.send_msg.connect(self.diagnosis_end_slot)
 
     def select_file(self):
         self.ui.pb_select_file.setEnabled(False)
@@ -157,11 +165,10 @@ class MainWindow(QMainWindow):
             # 创建子线程，训练模型
             training_thread = threading.Thread(target=CNN_1D_training,
                                                args=(data_path, signal_length, signal_number, normal, rate,
-                                                     self.cache_path, self.model_name)
+                                                     self.cache_path, self.model_name, self.training_end_signal)
                                                )
             # training_thread.setDaemon(True)  # 守护线程
             training_thread.start()
-            training_end_signal.send_msg.connect(self.training_end_slot)  # 信号与槽连接
 
         elif 'LSTM' == select_model:
             self.model_name = 'LSTM'
@@ -176,11 +183,10 @@ class MainWindow(QMainWindow):
             # 创建子线程，训练模型
             training_thread = threading.Thread(target=LSTM_training,
                                                args=(data_path, signal_length, signal_number, normal, rate,
-                                                     self.cache_path, self.model_name)
+                                                     self.cache_path, self.model_name, self.training_end_signal)
                                                )
             # training_thread.setDaemon(True)  # 守护线程
             training_thread.start()
-            training_end_signal.send_msg.connect(self.training_end_slot)  # 信号与槽连接
 
         elif 'GRU' == select_model:
             self.model_name = 'GRU'
@@ -195,11 +201,10 @@ class MainWindow(QMainWindow):
             # 创建子线程，训练模型
             training_thread = threading.Thread(target=GRU_training,
                                                args=(data_path, signal_length, signal_number, normal, rate,
-                                                     self.cache_path, self.model_name)
+                                                     self.cache_path, self.model_name, self.training_end_signal)
                                                )
             # training_thread.setDaemon(True)  # 守护线程
             training_thread.start()
-            training_end_signal.send_msg.connect(self.training_end_slot)  # 信号与槽连接
 
         elif '随机森林' == select_model:
             self.model_name = 'random_forest'
@@ -209,11 +214,10 @@ class MainWindow(QMainWindow):
             # 创建子线程，训练模型
             training_thread = threading.Thread(target=random_forest_training,
                                                args=(data_path, signal_length, signal_number, normal, rate,
-                                                     self.cache_path, self.model_name)
+                                                     self.cache_path, self.model_name, self.training_end_signal)
                                                )
             # training_thread.setDaemon(True)  # 守护线程
             training_thread.start()
-            training_end_signal.send_msg.connect(self.training_end_slot)  # 信号与槽连接
 
     def training_end_slot(self, msg):
         self.model = msg['model']
@@ -365,10 +369,10 @@ class MainWindow(QMainWindow):
         self.ui.tb_diagnosis_result.setText(text + '\n实时诊断：正在诊断..\n--------------')
 
         # 开个子线程进行故障诊断
-        diagnosis_end_signal.send_msg.connect(self.diagnosis_end_slot)  # 信号与槽连接
         diagnosis_thread = threading.Thread(target=fault_diagnosis,
                                             args=(self.model_file_path, real_time_data_path,
-                                                  self.model_config['mean'], self.model_config['std']))
+                                                  self.model_config['mean'], self.model_config['std'],
+                                                  self.diagnosis_end_signal))
         diagnosis_thread.start()
 
     def local_diagnosis(self):
@@ -402,10 +406,10 @@ class MainWindow(QMainWindow):
         self.ui.tb_diagnosis_result.setText(text + '\n本地诊断：正在诊断..\n--------------')
 
         # 开个子线程进行故障诊断
-        diagnosis_end_signal.send_msg.connect(self.diagnosis_end_slot)  # 信号与槽连接
         diagnosis_thread = threading.Thread(target=fault_diagnosis,
                                             args=(self.model_file_path, file_path,
-                                                  self.model_config['mean'], self.model_config['std']))
+                                                  self.model_config['mean'], self.model_config['std'],
+                                                  self.diagnosis_end_signal))
         diagnosis_thread.start()
 
     def closeEvent(self, event):
@@ -437,7 +441,7 @@ def read_mat(data_path):
     return data
 
 
-def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
+def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name, training_end_signal):
     """
     训练 1D_CNN 模型
     :param data_path: 数据路径
@@ -447,6 +451,7 @@ def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_
     :param rate: 训练集，验证集，测试集 划分比例
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
+    :param training_end_signal: 信号
     :return:
     """
     X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
@@ -467,7 +472,7 @@ def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_
     training_end_signal.send_msg.emit(msg)
 
 
-def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
+def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name, training_end_signal):
     """
     训练 LSTM 模型
     :param data_path: 数据路径
@@ -477,6 +482,7 @@ def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_pa
     :param rate: 训练集，验证集，测试集 划分比例
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
+    :param training_end_signal: 信号
     :return:
     """
     X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
@@ -497,7 +503,7 @@ def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_pa
     training_end_signal.send_msg.emit(msg)
 
 
-def GRU_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
+def GRU_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name, training_end_signal):
     """
     训练 GRU 模型
     :param data_path: 数据路径
@@ -507,6 +513,7 @@ def GRU_training(data_path, signal_length, signal_number, normal, rate, save_pat
     :param rate: 训练集，验证集，测试集 划分比例
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
+    :param training_end_signal: 信号
     :return:
     """
     X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
@@ -527,7 +534,8 @@ def GRU_training(data_path, signal_length, signal_number, normal, rate, save_pat
     training_end_signal.send_msg.emit(msg)
 
 
-def random_forest_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name):
+def random_forest_training(data_path, signal_length, signal_number, normal, rate, save_path, model_name,
+                           training_end_signal):
     """
     训练 随机森林 模型
     :param data_path: 数据路径
@@ -537,6 +545,7 @@ def random_forest_training(data_path, signal_length, signal_number, normal, rate
     :param rate: 训练集，验证集，测试集 划分比例
     :param save_path: 训练完后各种图的保存路径
     :param model_name: 模型名字
+    :param training_end_signal: 信号
     :return:
     """
     X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
@@ -558,11 +567,14 @@ def random_forest_training(data_path, signal_length, signal_number, normal, rate
     training_end_signal.send_msg.emit(msg)
 
 
-def fault_diagnosis(model_file_path, real_time_data_path, mean, std):
+def fault_diagnosis(model_file_path, real_time_data_path, mean, std, diagnosis_end_signal):
     """
     使用模型进行故障诊断
     :param model_file_path: 模型路径
     :param real_time_data_path: 数据路径
+    :param mean: z-score标准化操作时的均值
+    :param std: z-score标准化操作时的标准差
+    :param diagnosis_end_signal: 信号
     :return:
     """
     suffix = model_file_path.split('/')[-1].split('.')[-1]  # 获得所选模型的后缀名
