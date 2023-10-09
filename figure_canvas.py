@@ -33,12 +33,18 @@ class MyFigureCanvas(FigureCanvas):
         self.axes = fig.add_subplot(111)  # 添加子图
         self.axes.spines['top'].set_visible(False)  # 去掉绘图时上面的横线
         self.axes.spines['right'].set_visible(False)  # 去掉绘图时右面的横线
+        self.axes.plot(range(-1, 2), [0, 0, 0])
 
         self.graphics_view = graphics_view
         # 加载的图形（FigureCanvas）不能直接放到graphicview控件中，必须先放到graphicScene，然后再把graphicscene放到graphicview中
         self.graphic_scene = QGraphicsScene()
+        # 把图形放到QGraphicsScene中，注意：图形是作为一个QWidget放到放到QGraphicsScene中的
+        self.graphic_scene.addWidget(self)
+        self.graphics_view.setScene(self.graphic_scene)  # 把QGraphicsScene放入QGraphicsView
+        self.graphics_view.show()  # 调用show方法呈现图形
 
     def plot(self, x, y, xlim=None, ylim=None, title=None):
+        self.axes.clear()
         self.axes.plot(x, y)
         if xlim:
             self.axes.set_xlim(xlim)
@@ -46,9 +52,4 @@ class MyFigureCanvas(FigureCanvas):
             self.axes.set_ylim(ylim)
         if title:
             self.axes.set_title(title)
-
-        # 把图形放到QGraphicsScene中，注意：图形是作为一个QWidget放到放到QGraphicsScene中的
-        self.graphic_scene.addWidget(self)
-
-        self.graphics_view.setScene(self.graphic_scene)  # 把QGraphicsScene放入QGraphicsView
-        self.graphics_view.show()  # 调用show方法呈现图形
+        self.draw()
