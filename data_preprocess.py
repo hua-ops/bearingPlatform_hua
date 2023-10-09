@@ -15,6 +15,7 @@ import numpy as np
 import os
 
 from sklearn import preprocessing  # 0-1编码
+from standard_scaler import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit  # 随机划分，保证每一类比例相同
 
 
@@ -165,8 +166,8 @@ def training_stage_prepro(data_path, signal_length=864, signal_number=1000, norm
         y_valid_test = np.asarray(y_valid_test, dtype=np.int32)
         return y_train, y_valid_test
 
-    def scalar_stand(X_train, X_valid_test):
-        '''
+    def scaler_stand(X_train, X_valid_test):
+        """
         函数说明：用训练集标准差标准化训练集以及测试集
 
         Parameters:
@@ -175,13 +176,12 @@ def training_stage_prepro(data_path, signal_length=864, signal_number=1000, norm
         Returns:
             X_train : 标准化后的训练集
             X_valid_test : 标准化后的<验证和测试集>
-        '''
-        # TODO: 这里要将每个模型训练时的标准化数据跟着模型一起储存下来，否则，当实时诊断时，新输入的数据重新进行标准化，会造成标准化尺度不相同，
-        #  使得诊断结果不准确，以后解决。或者换个标准化方法
-        scalar = preprocessing.StandardScaler().fit(X_train)
-        X_train = scalar.transform(X_train)
-        X_valid_test = scalar.transform(X_valid_test)
-        return X_train, X_valid_test
+        """
+        scaler = StandardScaler().fit(X_train)
+        X_train = scaler.transform(X_train)
+        X_valid_test = scaler.transform(X_valid_test)
+        scaler_info = {'mean': scaler.mean_[0], 'std': scaler.std_[0]}
+        return X_train, X_valid_test, scaler_info
 
     def valid_test_slice(X_valid_test, y_valid_test):
         '''
@@ -215,34 +215,32 @@ def training_stage_prepro(data_path, signal_length=864, signal_number=1000, norm
     X_train, y_train = add_labels(train)
     # 为验证集及测试集制作标签
     X_valid_test, y_valid_test = add_labels(valid_test)
-    '''
-    print(y_train)
-    print(y_valid_test)
-    这两句程序的结果及分析见下方图片
-    '''
     # 为所有数据集One-hot标签
     y_train, y_valid_test = one_hot(y_train, y_valid_test)
     # 数据 是否标准化.
     if normal:
-        X_train, X_valid_test = scalar_stand(X_train, X_valid_test)
+        X_train, X_valid_test, scaler_info = scaler_stand(X_train, X_valid_test)
     else:  # 需要做一个数据转换，转换成np格式.
         X_train = np.asarray(X_train)
         X_valid_test = np.asarray(X_valid_test)
+        scaler_info = {'mean': None, 'std': None}
     # 将 验证及测试集 切分为 验证集 和 测试集
     X_valid, y_valid, X_test, y_test = valid_test_slice(X_valid_test, y_valid_test)
 
-    return X_train, y_train, X_valid, y_valid, X_test, y_test
+    return X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info
 
 
-def diagnosis_stage_prepro(data_path, signal_length=864, signal_number=500, normal=True):
-    '''
+def diagnosis_stage_prepro(data_path, signal_length=864, signal_number=500, normal=True, mean=0, std=1):
+    """
     诊断阶段对数据的预处理
     :param data_path: 数据路径
     :param signal_length: 信号长度
     :param signal_number: 信号数量
     :param normal: 是否标准化
+    :param mean: z-score标准化操作时的均值
+    :param std: z-score标准化操作时的标准差
     :return:
-    '''
+    """
     file_name = data_path.split('/')[-1].split('.')[0]  # 获得文件名
 
     def capture():
@@ -289,8 +287,8 @@ def diagnosis_stage_prepro(data_path, signal_length=864, signal_number=500, norm
         diagnosis_samples_dict[key] = samples  # 字典存储---文件名：对应的信号
         return diagnosis_samples_dict
 
-    def scalar_stand(X_train):
-        '''
+    def scaler_stand(x, mean, std):
+        """
         函数说明：用训练集标准差标准化训练集
 
         Parameters:
@@ -298,10 +296,10 @@ def diagnosis_stage_prepro(data_path, signal_length=864, signal_number=500, norm
             X_valid_test : 验证和测试集
         Returns:
             X_train : 标准化后的训练集
-        '''
-        scalar = preprocessing.StandardScaler().fit(X_train)
-        X_train = scalar.transform(X_train)
-        return X_train
+        """
+        scaler = StandardScaler(mean=mean, std=std)
+        x = scaler.transform(x)
+        return x
 
     # 从.mat文件中读取出数据的字典
     data_dict = capture()
@@ -313,7 +311,7 @@ def diagnosis_stage_prepro(data_path, signal_length=864, signal_number=500, norm
 
     # 数据 是否标准化.
     if normal:
-        diagnosis_samples = scalar_stand(diagnosis_samples)
+        diagnosis_samples = scaler_stand(diagnosis_samples, mean, std)
     else:  # 需要做一个数据转换，转换成np格式.
         diagnosis_samples = np.asarray(diagnosis_samples)
 

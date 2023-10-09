@@ -12,16 +12,7 @@
 * python 3.6
 * anaconda
 * Pycharm
-## 3.框架与依赖
-* keras==2.24
-* tensorflow-gpu==1.12
-* pyside2==5.15.2
-* scikit-learn==0.23
-* numpy≈1.16.4
-* pandas≈0.25.0
-* matplotlib≈3.1.0
-## 4.详细说明
-## 4.1 文件说明
+## 3. 文件说明
 UI: 存放的软件平台页面布局文件
 
 data_preprocess.py: 数据预处理
@@ -39,7 +30,7 @@ message_signal.py: 自定义信号
 preprocess_train_result.py: 处理模性训练结果的相关函数
 
 training_model.py 模型训练的相关函数
-### 4.1 故障分类算法
+## 4. 故障分类算法
 算法可以对**0马力，采样频率为48KHZ**的轴承的9类故障以及正常状态进行分类，这9类故障分别为：
 * 滚动体故障：0.1778mm
 * 滚动体故障：0.3556mm
@@ -68,5 +59,11 @@ training_model.py 模型训练的相关函数
 <img src="img/train_model_page.jpg" alt="训练模型页面" style="zoom: 67%;" />
 
 ## 6.说明
-对于数据可视化的图片显示，参照[Pyside2中嵌入Matplotlib的绘图](https://blog.csdn.net/qq_28053421/article/details/113828372?spm=1001.2014.3001.5501)，使用了  GraphicsView控件嵌入Matplotlib的绘图，
+1. 对于数据可视化的图片显示，参照[Pyside2中嵌入Matplotlib的绘图](https://blog.csdn.net/qq_28053421/article/details/113828372?spm=1001.2014.3001.5501)，使用了  GraphicsView控件嵌入Matplotlib的绘图，
 而在训练结果展示的图片显示中，由于绘图使用了sklearn中封装的函数，所以目前是将其先存到本地，然后再读取显示。
+2. 为保证在使用模型进行 本地诊断/实时诊断 时的准确性，需要对诊断数据利用与模型训练时相同的数据标准化尺度进行标准化处理，
+因此在保存训练模型时，会同时保存一个配置文件（JSON文件），以记录标准化的相关信息。
+同时，为保证配置文件和模型的匹配性，会同时记录模型文件的md5值，以便在加载模型时校验。
+
+## 7. TO DO List
+1. 添加模型参数设置功能

@@ -9,23 +9,23 @@ Created on 2021/2/3 14:06
 
 @Desc  : 故障诊断的相关函数
 """
-
 import numpy as np
 import joblib
 from keras.utils import CustomObjectScope
 from keras.initializers import glorot_uniform
 from keras.models import load_model
+import keras.backend as K
 
 from feature_extraction import feature_extraction
 
 
 def diagnosis(diagnosis_samples, model_file_path):
-    '''
+    """
     故障诊断
     :param diagnosis_samples: 数据样本
     :param model_file_path: 模型路径
     :return: pred_result：诊断结果
-    '''
+    """
     suffix = model_file_path.split('/')[-1].split('.')[-1]  # 获得所选模型的后缀名
     if 'm' == suffix:  # 说明是随机森林
         # 提取特征
@@ -39,6 +39,7 @@ def diagnosis(diagnosis_samples, model_file_path):
         # 使用模型进行诊断
         y_preds = model.predict(diagnosis_samples_feature_extraction)
     else:
+        K.clear_session()
         diagnosis_samples_new = diagnosis_samples[:, :, np.newaxis]  # 添加一个新维度
         # 加载模型 --- 这里要用这种方法加载，不然加载有的模型会报错，我也不知道为什么
         with CustomObjectScope({'GlorotUniform': glorot_uniform()}):

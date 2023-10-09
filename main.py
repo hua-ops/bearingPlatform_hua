@@ -21,6 +21,7 @@ from tensorflow import test
 import joblib  # 这个库在安装sklearn时好像会一起安装
 import threading
 import numpy as np
+import json
 
 from figure_canvas import MyFigureCanvas
 from data_preprocess import training_stage_prepro, diagnosis_stage_prepro
@@ -28,6 +29,7 @@ from training_model import training_with_1D_CNN, training_with_LSTM, training_wi
 from preprocess_train_result import plot_history_curcvs, plot_confusion_matrix, brief_classification_report, plot_metrics
 from message_signal import MyMessageSignal
 from diagnosis import diagnosis
+from utils import generate_md5
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # 定义一些全局变量
@@ -63,8 +65,8 @@ class MainWindow(QMainWindow):
                                                     width=self.ui.gv_visual_data.width() / 10,
                                                     height=self.ui.gv_visual_data.height() / 13)
         self.gv_visual_diagnosis_data_canvas = MyFigureCanvas(self.ui.gv_visual_diagnosis_data,
-                                                              width=self.ui.gv_visual_diagnosis_data.width() / 10,
-                                                              height=self.ui.gv_visual_diagnosis_data.height() / 13)
+                                                              width=self.ui.gv_visual_diagnosis_data.width() / 55,
+                                                              height=self.ui.gv_visual_diagnosis_data.height() / 77)
 
         # 按钮的信号与槽连接
         self.ui.pb_select_file.clicked.connect(self.select_file)  # 模型训练页面的 选择文件 按钮
@@ -217,6 +219,7 @@ class MainWindow(QMainWindow):
         self.model = msg['model']
         self.classification_report = msg['classification_report']
         self.score = msg['score']
+        self.scaler_info = msg['scaler_info']
 
         QMessageBox.information(self, '提示', '训练完成！', QMessageBox.Yes, QMessageBox.Yes)
         self.ui.statusbar.close()
@@ -287,20 +290,27 @@ class MainWindow(QMainWindow):
                 return
 
         if 'random_forest' == self.model_name:
-            save_path, _ = QFileDialog.getSaveFileName(self,
-                                                       '保存文件',  # 标题
-                                                       './' + self.model_name + '.m',  # 默认开始打开的文件路径， . 表示在当前文件夹下, 后面接的默认文件名
-                                                       '(*.m)'  # 文件过滤，表示只显示后缀名为 .mat 的文件
-                                                       )
+            save_path, _ = QFileDialog.getSaveFileName(self, '保存文件', './' + self.model_name + '.m', '(*.m)')
             if '' == save_path:  # 没有确定保存。这里也可以通过 变量 _ 来判断
                 return
             # print(save_path)
-            joblib.dump(self.model, save_path)  # 存储
+            joblib.dump(self.model, save_path)  # 保存模型
+            # 保存配置文件
+            md5 = generate_md5(save_path)
+            model_config = {'mean': self.scaler_info['mean'], 'std': self.scaler_info['std'], 'md5': md5}
+            with open(fr'{save_path[: -2]}.json', 'w') as jf:
+                json.dump(model_config, jf)
         else:
             save_path, _ = QFileDialog.getSaveFileName(self, '保存文件', './' + self.model_name + '.h5', '(*.h5)')
             if '' == save_path:  # 没有确定保存。这里也可以通过 变量 _ 来判断
                 return
+
             self.model.save(save_path)
+            md5 = generate_md5(save_path)
+            model_config = {'mean': self.scaler_info['mean'], 'std': self.scaler_info['std'], 'md5': md5}
+            with open(fr'{save_path[: -3]}.json', 'w') as jf:
+                json.dump(model_config, jf)
+
         text = self.ui.tb_train_result.toPlainText()  # 获得原本显示的文字
         self.ui.tb_train_result.setText(text + "\n模型保存成功\n--------------")
 
@@ -309,6 +319,25 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(self, '选择模型', '.', '(*.m *.h5)')
         if '' != file_path:  # 选择了文件, 则将路径更新，否则，保留原路径
             self.model_file_path = file_path
+            # 校验模型与配置文件的一致性
+            md5 = generate_md5(self.model_file_path)
+            path = self.model_file_path.split('.')[0]
+            try:
+                with open(f'{path}.json', 'r') as f:
+                    content = f.read()
+            except FileNotFoundError:
+                reply = QMessageBox.information(self, '提示', '未找到配置文件！\n请确保模型和同名配置文件在同一个文件夹下',
+                                                QMessageBox.Yes, QMessageBox.Yes)
+                if reply == QMessageBox.Yes:
+                    self.ui.pb_select_model.setEnabled(True)
+                    return
+            self.model_config = json.loads(content)
+            if md5 != self.model_config['md5']:
+                reply = QMessageBox.information(self, '提示', '模型与配置文件不匹配，请检查！',
+                                                QMessageBox.Yes, QMessageBox.Yes)
+                if reply == QMessageBox.Yes:
+                    self.ui.pb_select_model.setEnabled(True)
+                    return
             self.ui.tb_diagnosis_result.setText('选择文件：' + self.model_file_path + '\n--------------')
         self.ui.pb_select_model.setEnabled(True)
 
@@ -337,7 +366,9 @@ class MainWindow(QMainWindow):
 
         # 开个子线程进行故障诊断
         diagnosis_end_signal.send_msg.connect(self.diagnosis_end_slot)  # 信号与槽连接
-        diagnosis_thread = threading.Thread(target=fault_diagnosis, args=(self.model_file_path, real_time_data_path))
+        diagnosis_thread = threading.Thread(target=fault_diagnosis,
+                                            args=(self.model_file_path, real_time_data_path,
+                                                  self.model_config['mean'], self.model_config['std']))
         diagnosis_thread.start()
 
     def local_diagnosis(self):
@@ -368,20 +399,21 @@ class MainWindow(QMainWindow):
         self.gv_visual_diagnosis_data_canvas.plot(np.arange(len(data)), data[:, 0], title=title)
 
         text = self.ui.tb_diagnosis_result.toPlainText()
-        self.ui.tb_diagnosis_result.setText(text + '\n实时诊断：正在诊断..\n--------------')
+        self.ui.tb_diagnosis_result.setText(text + '\n本地诊断：正在诊断..\n--------------')
 
         # 开个子线程进行故障诊断
         diagnosis_end_signal.send_msg.connect(self.diagnosis_end_slot)  # 信号与槽连接
         diagnosis_thread = threading.Thread(target=fault_diagnosis,
-                                            args=(self.model_file_path, file_path))
+                                            args=(self.model_file_path, file_path,
+                                                  self.model_config['mean'], self.model_config['std']))
         diagnosis_thread.start()
 
     def closeEvent(self, event):
-        '''
+        """
         重写关闭窗口函数：在点击关闭窗口后，将缓存文件夹下的文件全部删除
         :param event:
         :return:
-        '''
+        """
         file_names = os.listdir(self.cache_path)
         for file_name in file_names:
             os.remove(self.cache_path + '/' + file_name)
@@ -417,8 +449,9 @@ def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_
     :param model_name: 模型名字
     :return:
     """
-    X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
-                                                                               normal, rate, enhance=False)
+    X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
+                                                                                            signal_number, normal, rate,
+                                                                                            enhance=False)
     model, history, score = training_with_1D_CNN(X_train, y_train, X_valid, y_valid, X_test, y_test, batch_size=128,
                                                  epochs=20, num_classes=10)
     plot_history_curcvs(history, save_path, model_name)  # 绘制 训练集合验证集 损失曲线和正确率曲线
@@ -429,7 +462,8 @@ def CNN_1D_training(data_path, signal_length, signal_number, normal, rate, save_
 
     # 发送信号通知主线程训练完成，让主线程发个弹窗，通知用户, 同时将模型得分发送过去以便显示
     # training_end_signal.run()
-    msg = {'model': model, 'classification_report': classification_report, 'score': str(score)}
+    msg = {'model': model, 'classification_report': classification_report, 'score': str(score),
+           'scaler_info': scaler_info}
     training_end_signal.send_msg.emit(msg)
 
 
@@ -445,8 +479,9 @@ def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_pa
     :param model_name: 模型名字
     :return:
     """
-    X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
-                                                                               normal, rate, enhance=False)
+    X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
+                                                                                            signal_number, normal, rate,
+                                                                                            enhance=False)
     model, history, score = training_with_LSTM(X_train, y_train, X_valid, y_valid, X_test, y_test, batch_size=128,
                                                epochs=60, num_classes=10)
     plot_history_curcvs(history, save_path, model_name)  # 绘制 训练集合验证集 损失曲线和正确率曲线
@@ -457,7 +492,8 @@ def LSTM_training(data_path, signal_length, signal_number, normal, rate, save_pa
 
     # 发送信号通知主线程训练完成，让主线程发个弹窗，通知用户
     # training_end_signal.run()
-    msg = {'model': model, 'classification_report': classification_report, 'score': str(score)}
+    msg = {'model': model, 'classification_report': classification_report, 'score': str(score),
+           'scaler_info': scaler_info}
     training_end_signal.send_msg.emit(msg)
 
 
@@ -473,8 +509,9 @@ def GRU_training(data_path, signal_length, signal_number, normal, rate, save_pat
     :param model_name: 模型名字
     :return:
     """
-    X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
-                                                                               normal, rate, enhance=False)
+    X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
+                                                                                            signal_number, normal, rate,
+                                                                                            enhance=False)
     model, history, score = training_with_GRU(X_train, y_train, X_valid, y_valid, X_test, y_test, batch_size=128,
                                               epochs=60, num_classes=10)
     plot_history_curcvs(history, save_path, model_name)  # 绘制 训练集合验证集 损失曲线和正确率曲线
@@ -485,7 +522,8 @@ def GRU_training(data_path, signal_length, signal_number, normal, rate, save_pat
 
     # 发送信号通知主线程训练完成，让主线程发个弹窗，通知用户
     # training_end_signal.run()
-    msg = {'model': model, 'classification_report': classification_report, 'score': str(score)}
+    msg = {'model': model, 'classification_report': classification_report, 'score': str(score),
+           'scaler_info': scaler_info}
     training_end_signal.send_msg.emit(msg)
 
 
@@ -501,8 +539,9 @@ def random_forest_training(data_path, signal_length, signal_number, normal, rate
     :param model_name: 模型名字
     :return:
     """
-    X_train, y_train, X_valid, y_valid, X_test, y_test = training_stage_prepro(data_path, signal_length, signal_number,
-                                                                               normal, rate, enhance=False)
+    X_train, y_train, X_valid, y_valid, X_test, y_test, scaler_info = training_stage_prepro(data_path, signal_length,
+                                                                                            signal_number, normal, rate,
+                                                                                            enhance=False)
     model, score, X_train_feature_extraction, X_test_feature_extraction = training_with_random_forest(X_train, y_train,
                                                                                                       X_valid, y_valid,
                                                                                                       X_test, y_test)
@@ -514,11 +553,12 @@ def random_forest_training(data_path, signal_length, signal_number, normal, rate
 
     # 发送信号通知主线程训练完成，让主线程发个弹窗，通知用户
     # training_end_signal.run()
-    msg = {'model': model, 'classification_report': classification_report, 'score': str(score)}
+    msg = {'model': model, 'classification_report': classification_report, 'score': str(score),
+           'scaler_info': scaler_info}
     training_end_signal.send_msg.emit(msg)
 
 
-def fault_diagnosis(model_file_path, real_time_data_path):
+def fault_diagnosis(model_file_path, real_time_data_path, mean, std):
     """
     使用模型进行故障诊断
     :param model_file_path: 模型路径
@@ -527,10 +567,10 @@ def fault_diagnosis(model_file_path, real_time_data_path):
     """
     suffix = model_file_path.split('/')[-1].split('.')[-1]  # 获得所选模型的后缀名
     if 'm' == suffix:  # 说明是随机森林
-        diagnosis_samples = diagnosis_stage_prepro(real_time_data_path, 500, 500, False)
+        diagnosis_samples = diagnosis_stage_prepro(real_time_data_path, 500, 500, normal=False)
         pred_result = diagnosis(diagnosis_samples, model_file_path)
     else:
-        diagnosis_samples = diagnosis_stage_prepro(real_time_data_path, 2048, 500, True)
+        diagnosis_samples = diagnosis_stage_prepro(real_time_data_path, 2048, 500, normal=True, mean=mean, std=std)
         pred_result = diagnosis(diagnosis_samples, model_file_path)
 
     # 诊断完成，将结果发送回去
